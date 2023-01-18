@@ -41,8 +41,9 @@ def main(client):
 
     try:
         while True:
-            message=input(">")
-            client.post(message)
+            message=input(">").strip()
+            if len(message) > 0:
+                client.post(message)
             client.sync()
             while not client.inbox.empty():
                 print(client.inbox.get().decode())
