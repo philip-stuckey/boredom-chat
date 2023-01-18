@@ -13,7 +13,6 @@ class Client:
 
     def __init__(self, socket):
         self.socket=PacketHandler(socket)
-
         self.inbox=Queue()
 
     def receive(self):
