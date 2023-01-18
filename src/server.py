@@ -28,33 +28,33 @@ def handle_client(session: ClientSession):
         tagged_message = TaggedMessage.from_bytes(message)
         debug(f"got message with tag '{tagged_message.tag}'")
         if tagged_message.tag == b'SYNC':
-            while not session.message_queue.empty():
-                message = session.message_queue.get()
+            for message in session.messages:
                 session.socket.send_message(Post(message))
             session.socket.send_message(EndOfPosts())
         elif tagged_message.tag == b'POST':
             debug(f"got post from {session.name}")
-            session.message_queue.put(tagged_message.message)
+            session.messages.append(tagged_message.message)
         else:
             warning(f"unrecognized tag {tagged_message.tag} from {session.name}")
-            raise Exception(f"unrecognized tag {tagged_message.tag} from {session.name}")
+            break
 
 
-def main(socket):
-    message_queue = Queue()
+def main(sock):
+    message_history = []
+    thread_pool = []
     while True:
         debug("waiting on new clients")
         (conn, addr) = sock.accept()
         session = ClientSession(
             socket=PacketHandler(conn),
             name=addr,
-            message_queue=message_queue
+            messages=message_history,
         )
-        try:
-            handle_client(session)
-        # TODO FIX this
-        except Exception as e:
-            print(e)
+        t = Thread(target=handle_client, args=(session,))
+        t.start()
+        thread_pool[:] = filter(Thread.is_alive, thread_pool)
+        thread_pool.append(t)
+
 
 if __name__ == "__main__":
     HOST, PORT = "localhost", 9999
@@ -63,6 +63,6 @@ if __name__ == "__main__":
             sock.bind((HOST, PORT))
             info(f"listening on port {PORT}")
             sock.listen()
-            main(socket)
+            main(sock)
         finally:
             sock.close()
